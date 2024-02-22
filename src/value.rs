@@ -1,9 +1,9 @@
 use std::borrow::Borrow;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops::{self, RangeBounds};
+use std::ops;
 use std::rc::Rc;
 
 #[derive(Clone)]
