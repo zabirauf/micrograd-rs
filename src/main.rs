@@ -1,19 +1,25 @@
-mod engine;
+mod value;
 
-use engine::Value;
+use value::Value;
 
 fn main() {
-    let a = Value::new(5.0);
-    let b = Value::new(-3.0);
-    println!("A is {}", a);
-    println!("B is {}", b);
+    // Inputs x1, x2
+    let x1 = Value::new(2.0);
+    let x2 = Value::new(0.0);
 
-    let c = a.clone() + b.clone();
-    println!("C is {}", c);
+    // Weights w1, w2
+    let w1 = Value::new(-3.0);
+    let w2 = Value::new(1.0);
 
-    let d = a.clone()*b.clone();
-    println!("D is {}", d);
+    // Bias of the neuron
+    let b = Value::new(6.8813735870195432);
 
-    let e = a.clone()*b.clone() + c;
-    println!("E is {}", e);
+    // Computation
+    let x1w1 = x1 * w1;
+    let x2w2 = x2 * w2;
+    let x1w1x2w2 = x1w1 + x2w2;
+    let n = x1w1x2w2 + b;
+    let o = n.tanh();
+
+    println!("O is {}", o);
 }
