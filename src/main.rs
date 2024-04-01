@@ -6,28 +6,28 @@ use value::Value;
 use crate::neuron::{Layer, MultiLayerPerceptron, Neuron};
 
 fn main() {
-    // let x1 = Value::new(2.0);
-    // let x2 = Value::new(0.0);
+    let x1 = Value::new(2.0);
+    let x2 = Value::new(0.0);
 
-    // // Weights w1, w2
-    // let w1 = Value::new(-3.0);
-    // let w2 = Value::new(1.0);
+    // Weights w1, w2
+    let w1 = Value::new(-3.0);
+    let w2 = Value::new(1.0);
 
-    // // Bias of the neuron
-    // let b = Value::new(6.8813735870195432);
+    // Bias of the neuron
+    let b = Value::new(6.8813735870195432);
 
-    // // Computation
-    // let x1w1 = x1 * w1;
-    // let x2w2 = x2 * w2;
-    // let x1w1x2w2 = x1w1 + x2w2;
-    // let n = x1w1x2w2 + b;
-    // let o = Value::tanh(n);
+    // Computation
+    let x1w1 = Value::mul(x1, w1);
+    let x2w2 = Value::mul(x2, w2);
+    let x1w1x2w2 = Value::add(x1w1, x2w2);
+    let n = Value::add(x1w1x2w2, b);
+    let o = Value::tanh(n);
 
-    // println!("O is {}", o);
+    println!("O is {}", o);
 
-    // Value::back_propagate(&o);
+    Value::back_propagate(&o);
 
-    // println!("O is {}", o);
+    println!("O is {}", o);
 
     // println!("-----------");
 
@@ -120,5 +120,9 @@ fn main() {
     let ys = vec![Value::new(1.0), Value::new(-1.0), Value::new(-1.0), Value::new(1.0)];
     let mlp = MultiLayerPerceptron::new(3, vec![4,4,1]);
 
+    println!("{}", mlp);
+
     mlp.train(0.01, 50, xs, ys);
+
+    println!("{}", mlp);
 }

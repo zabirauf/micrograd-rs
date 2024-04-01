@@ -19,7 +19,7 @@ pub struct Value {
     non_chained_deps: Option<[f32; 1]>,
 
     // The gradient calculated.
-    grad: f32,
+    pub grad: f32,
 
     // Defines the operation associated with the value. 
     // For example if its + then it means the value was output of addition of two values.
@@ -76,7 +76,8 @@ impl Value {
                         child_borrow.grad += 1.0 - data.powi(2);
                     },
                     Some("exp") => {
-                        //TODO: Seems like some bug here
+                        //TODO: Seems like some bug here. 
+                        // Derivative of e^x is e^x so gradient would be e^x * gradient
                         child_borrow.grad += data * grad;
                     },
                     Some("pow") => {
@@ -189,6 +190,21 @@ impl Value {
         slf.get().borrow_mut().data += -1.0 * learning_rate * grad;
 
         //println!("Backward: Before ({}, {}); After ({}, {})", data, grad, slf.get().borrow().data, grad);
+    }
+
+    pub fn print_children(slf: &RefValue) {
+        Self::print_children_with_prefix(slf, "");
+    }
+
+    fn print_children_with_prefix(slf: &RefValue, prefix: &str) {
+        let children = &slf.get().borrow().children;
+        println!("{}{}{}", prefix, slf, if children.len() == 0 { ";" } else { " {" } );
+        for child in children {
+            Self::print_children_with_prefix(child, &(String::from(prefix) + "    "));
+        }
+        if children.len() != 0 {
+            println!("{}}}", prefix);
+        }
     }
 }
 

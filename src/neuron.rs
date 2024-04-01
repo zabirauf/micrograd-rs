@@ -1,5 +1,6 @@
 use crate::value::{RefValue, Value};
-use rand::{Rng, SeedableRng};
+use rand::{Rng};
+use std::fmt;
 
 pub trait NetworkParameters {
     fn parameters(&self) -> Vec<RefValue>;
@@ -13,8 +14,7 @@ pub struct Neuron {
 
 impl Neuron {
     pub fn new(len: usize) -> Neuron {
-        // let mut rng = rand::thread_rng();
-        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+        let mut rng = rand::thread_rng();
         let mut n = Neuron {
             weights: Vec::<RefValue>::with_capacity(len),
             bias: Value::new(rng.gen_range(-1.0..1.0)),
@@ -128,26 +128,34 @@ impl MultiLayerPerceptron {
         xs: Vec<Vec<RefValue>>,
         ys: Vec<RefValue>,
     ) {
+        let mut loss: RefValue = Value::new(0.0);
         for iter in 0..iterations {
-            let loss = xs
+            loss = xs
                 .iter()
                 .map(|x| self.forward(x))
                 .map(|y| y.get(0).unwrap().clone())
                 .zip(ys.iter())
                 .fold(Value::new(0.0), |acc, (ypred, y)| {
+                    // acc + (y-ypref)^2.0
                     Value::add(acc, Value::pow(Value::sub(y.clone(), ypred), 2.0))
                 });
-            let loss = Value::div(loss, Value::new(ys.len() as f32));
+            loss = Value::div(loss.clone(), Value::new(ys.len() as f32));
+
 
             Value::back_propagate(&loss);
             println!("Loss at iteration {}: {}", iter, loss);
+            println!("{}", self);
 
             let params = self.parameters();
 
             for p in params {
                 Value::backward(&p, learning_rate);
             }
+
         }
+
+        println!("-------------------------------------------------------------------------------------");
+        Value::print_children(&loss);
     }
 }
 
@@ -157,5 +165,34 @@ impl NetworkParameters for MultiLayerPerceptron {
             .iter()
             .flat_map(|layer| layer.parameters())
             .collect()
+    }
+}
+impl fmt::Display for MultiLayerPerceptron {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "MultiLayerPerceptron")?;
+        for (i, layer) in self.layers.iter().enumerate() {
+            writeln!(f, "    {}", layer)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Layer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Layer")?;
+        for neuron in &self.neurons {
+            writeln!(f, "        {}", neuron)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Neuron {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Neuron")?;
+        for param in self.parameters().iter() {
+            writeln!(f, "            {}", param)?;
+        }
+        Ok(())
     }
 }
