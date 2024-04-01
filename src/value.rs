@@ -3,19 +3,31 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::ops;
+// use std::ops;
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Value {
-    data: f32,
-    children: Vec<RefValue>,
+    // The data associated with the value. 
+    pub data: f32,
+
+    // The children if its a non-leaf value that lead to its computation.
+    // This helps maintain a computation graph.
+    pub children: Vec<RefValue>,
+
+    // This contains other value that was used alongside the operation to compute but not part of computation graph. 
     non_chained_deps: Option<[f32; 1]>,
+
+    // The gradient calculated.
     grad: f32,
+
+    // Defines the operation associated with the value. 
+    // For example if its + then it means the value was output of addition of two values.
+    // If None then it's a leaf value.
     op: Option<&'static str>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RefValue(Rc<RefCell<Value>>);
 
 impl Value {
@@ -74,12 +86,12 @@ impl Value {
                     _ => {} // No operation or unsupported operation; no gradient update
                 }
 
-                println!("{}", child_borrow);
+                // println!("{}", child_borrow);
             }
         }
     }
 
-    fn topological_sort(
+    pub fn topological_sort(
         node: &RefValue,
         topo: &mut Vec<RefValue>,
         visited: &mut HashSet<RefValue>,
@@ -98,7 +110,10 @@ impl Value {
 
     pub fn tanh(slf: RefValue) -> RefValue {
         let x = slf.get().borrow().data;
-        let t = ((2.0 * x).exp() - 1.0) / ((2.0 * x).exp() + 1.0);
+        // As `exp` can return infinity which then later converting to tanh can change it to NaN
+        // to fix this we bound the number between Max and Min of f32
+        let e2x = (2.0 * x).exp().min(f32::MAX).max(f32::MIN);
+        let t = (e2x - 1.0) / (e2x + 1.0);
         RefValue(Rc::new(RefCell::new(Value {
             data: t,
             op: Some("tanh"),
@@ -128,6 +143,52 @@ impl Value {
             non_chained_deps: Some([other]),
             grad: 0.0 
         })))
+    }
+
+    pub fn add(slf: RefValue, rhs: RefValue) -> RefValue {
+        //let self_as_ref_value: RefValue = self.into();
+        // self + rhs
+        let val = RefValue(Rc::new(RefCell::new(Value {
+            data: slf.get().borrow().data + rhs.get().borrow().data,
+            op: Some("+"),
+            children: vec![],
+            non_chained_deps: None,
+            grad: 0.0,
+        })));
+        val.get().borrow_mut().children.extend(vec![slf, rhs]);
+
+        val
+    }
+
+    pub fn mul(slf: RefValue, rhs: RefValue) -> RefValue {
+        let val = RefValue(Rc::new(RefCell::new(Value {
+            data: slf.get().borrow().data * rhs.get().borrow().data,
+            op: Some("*"),
+            children: vec![],
+            non_chained_deps: None,
+            grad: 0.0,
+        })));
+
+        val.get().borrow_mut().children.extend(vec![slf, rhs]);
+
+        val
+    }
+
+    pub fn sub(slf: RefValue, rhs: RefValue) -> RefValue {
+        Value::add(slf, Value::mul(rhs, Value::new(-1.0)))
+    }
+
+    pub fn div(slf: RefValue, rhs: RefValue) -> RefValue {
+        Value::mul(slf, Value::pow(rhs, -1.0))
+    }
+
+    pub fn backward(slf: &RefValue, learning_rate: f32) {
+
+        //let data = slf.get().borrow().data;
+        let grad = slf.get().borrow().grad;
+        slf.get().borrow_mut().data += -1.0 * learning_rate * grad;
+
+        //println!("Backward: Before ({}, {}); After ({}, {})", data, grad, slf.get().borrow().data, grad);
     }
 }
 
@@ -180,14 +241,18 @@ impl fmt::Display for Value{
     }
 }
 
+/*
+
 impl From<f32> for RefValue {
     fn from(value: f32) -> Self {
+        // TODO: Check if other properties also need to be copied.
         Value::new(value)
     }
 }
 
 impl From<i32> for RefValue {
     fn from(value: i32) -> Self {
+        // TODO: Check if other properties also need to be copied.
         Value::new(value as f32)
     }
 }
@@ -218,6 +283,7 @@ impl ops::Add<RefValue> for i32 {
         self_as_ref_value + rhs
     }
 }
+
 impl ops::Add<RefValue> for f32 {
     type Output = RefValue;
 
@@ -231,7 +297,8 @@ impl<T: Into<RefValue>> ops::Sub<T> for RefValue {
     type Output = RefValue;
 
     fn sub(self, rhs: T) -> Self::Output {
-        self + (rhs.into() * -1)
+        let negative_rhs = rhs.into() * Value::new(-1.0);
+        self + negative_rhs//(rhs * -1.0)
     }
 }
 
@@ -280,6 +347,7 @@ impl ops::Mul<RefValue> for i32 {
         self_as_ref_value * rhs
     }
 }
+
 impl ops::Mul<RefValue> for f32 {
     type Output = RefValue;
 
@@ -307,6 +375,7 @@ impl ops::Div<RefValue> for i32 {
         self_as_ref_value / rhs
     }
 }
+
 impl ops::Div<RefValue> for f32 {
     type Output = RefValue;
 
@@ -315,3 +384,5 @@ impl ops::Div<RefValue> for f32 {
         self_as_ref_value / rhs
     }
 }
+
+*/
