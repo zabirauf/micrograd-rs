@@ -3,25 +3,24 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-// use std::ops;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct Value {
-    // The data associated with the value. 
+    // The data associated with the value.
     pub data: f32,
 
     // The children if its a non-leaf value that lead to its computation.
     // This helps maintain a computation graph.
     pub children: Vec<RefValue>,
 
-    // This contains other value that was used alongside the operation to compute but not part of computation graph. 
+    // This contains other value that was used alongside the operation to compute but not part of computation graph.
     non_chained_deps: Option<[f32; 1]>,
 
     // The gradient calculated.
     pub grad: f32,
 
-    // Defines the operation associated with the value. 
+    // Defines the operation associated with the value.
     // For example if its + then it means the value was output of addition of two values.
     // If None then it's a leaf value.
     op: Option<&'static str>,
@@ -62,7 +61,8 @@ impl Value {
                 let mut child_borrow = child.get().borrow_mut();
                 match op {
                     Some("+") => {
-                        child_borrow.grad += 1.0 * grad; // For addition, gradient is passed directly
+                        // For addition, gradient is passed directly
+                        child_borrow.grad += 1.0 * grad;
                     }
                     Some("*") => {
                         let other_child_data = if child == &children[0] {
@@ -70,24 +70,24 @@ impl Value {
                         } else {
                             children[0].get().borrow().data
                         };
-                        child_borrow.grad += grad * other_child_data; // For multiplication, gradient is scaled by the other operand
-                    },
+
+                        // For multiplication, gradient is scaled by the other operand
+                        child_borrow.grad += grad * other_child_data;
+                    }
                     Some("tanh") => {
-                        child_borrow.grad += 1.0 - data.powi(2);
-                    },
+                        // 1 - tanh(x)^2 is the derivative so * grad
+                        child_borrow.grad += (1.0 - data.powi(2)) * grad;
+                    }
                     Some("exp") => {
-                        //TODO: Seems like some bug here. 
                         // Derivative of e^x is e^x so gradient would be e^x * gradient
                         child_borrow.grad += data * grad;
-                    },
+                    }
                     Some("pow") => {
                         let n = non_chained_deps.unwrap()[0];
-                        child_borrow.grad += n * child_borrow.data.powf(n-1.0) * grad;
+                        child_borrow.grad += n * child_borrow.data.powf(n - 1.0) * grad;
                     }
                     _ => {} // No operation or unsupported operation; no gradient update
                 }
-
-                // println!("{}", child_borrow);
             }
         }
     }
@@ -124,14 +124,15 @@ impl Value {
         })))
     }
 
+    #[allow(dead_code)]
     pub fn exp(slf: RefValue) -> RefValue {
         let x = slf.get().borrow().data;
-        RefValue(Rc::new(RefCell::new(Value{
+        RefValue(Rc::new(RefCell::new(Value {
             data: x.exp(),
             op: Some("exp"),
             children: vec![slf],
             non_chained_deps: None,
-            grad: 0.0
+            grad: 0.0,
         })))
     }
 
@@ -142,13 +143,11 @@ impl Value {
             op: Some("pow"),
             children: vec![slf],
             non_chained_deps: Some([other]),
-            grad: 0.0 
+            grad: 0.0,
         })))
     }
 
     pub fn add(slf: RefValue, rhs: RefValue) -> RefValue {
-        //let self_as_ref_value: RefValue = self.into();
-        // self + rhs
         let val = RefValue(Rc::new(RefCell::new(Value {
             data: slf.get().borrow().data + rhs.get().borrow().data,
             op: Some("+"),
@@ -184,27 +183,59 @@ impl Value {
     }
 
     pub fn backward(slf: &RefValue, learning_rate: f32) {
-
-        //let data = slf.get().borrow().data;
         let grad = slf.get().borrow().grad;
-        slf.get().borrow_mut().data += -1.0 * learning_rate * grad;
-
-        //println!("Backward: Before ({}, {}); After ({}, {})", data, grad, slf.get().borrow().data, grad);
+        slf.get().borrow_mut().data -= learning_rate * grad;
     }
 
+    #[allow(dead_code)]
     pub fn print_children(slf: &RefValue) {
         Self::print_children_with_prefix(slf, "");
     }
 
+    #[allow(dead_code)]
     fn print_children_with_prefix(slf: &RefValue, prefix: &str) {
         let children = &slf.get().borrow().children;
-        println!("{}{}{}", prefix, slf, if children.len() == 0 { ";" } else { " {" } );
+        println!(
+            "{}{}{}",
+            prefix,
+            slf,
+            if children.len() == 0 { ";" } else { " {" }
+        );
         for child in children {
             Self::print_children_with_prefix(child, &(String::from(prefix) + "    "));
         }
         if children.len() != 0 {
             println!("{}}}", prefix);
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn generate_mermaid_graph(slf: &RefValue) -> String {
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
+        Self::generate_mermaid_graph_helper(slf, &mut nodes, &mut edges, 1);
+        let mut graph = String::from("stateDiagram-v2\n");
+        graph.push_str(&nodes.join("\n"));
+        graph.push_str("\n");
+        graph.push_str(&edges.join("\n"));
+        graph
+    }
+
+    #[allow(dead_code)]
+    fn generate_mermaid_graph_helper(
+        slf: &RefValue,
+        nodes: &mut Vec<String>,
+        edges: &mut Vec<String>,
+        id: usize,
+    ) -> usize {
+        let value = slf.get().borrow();
+        nodes.push(format!("s{} : {}", id, value));
+        let mut next_id = id + 1;
+        for child in &value.children {
+            edges.push(format!("s{} --> s{}", id, next_id));
+            next_id = Self::generate_mermaid_graph_helper(child, nodes, edges, next_id);
+        }
+        next_id
     }
 }
 
@@ -244,7 +275,7 @@ impl fmt::Display for RefValue {
     }
 }
 
-impl fmt::Display for Value{
+impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -380,7 +411,7 @@ impl<T: Into<RefValue>> ops::Div<T> for RefValue {
         let rhs = rhs.into();
         self * Value::pow(rhs, -1.0)
     }
-    
+
 }
 
 impl ops::Div<RefValue> for i32 {

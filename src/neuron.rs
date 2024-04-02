@@ -1,5 +1,5 @@
 use crate::value::{RefValue, Value};
-use rand::{Rng};
+use rand::Rng;
 use std::fmt;
 
 pub trait NetworkParameters {
@@ -29,17 +29,11 @@ impl Neuron {
     }
 
     pub fn forward(&self, x: &Vec<RefValue>) -> RefValue {
-        // out = tanh((w * x) + bias)
         let weighted_sum: RefValue = x
             .iter()
             .zip(self.weights.iter())
             .map(|(x_val, weight)| Value::mul(x_val.clone(), weight.clone()))
             .fold(self.bias.clone(), |acc, v| Value::add(v, acc));
-        // println!("Weighted sum: {}", weighted_sum);
-
-        // if weighted_sum.get().borrow().data.is_nan() {
-        //     println!("Children of Weighted Sum: {:?}", weighted_sum.get().borrow().children);
-        // }
 
         Value::tanh(weighted_sum)
     }
@@ -128,9 +122,9 @@ impl MultiLayerPerceptron {
         xs: Vec<Vec<RefValue>>,
         ys: Vec<RefValue>,
     ) {
-        let mut loss: RefValue = Value::new(0.0);
+        //let mut loss: RefValue = Value::new(0.0);
         for iter in 0..iterations {
-            loss = xs
+            let loss = xs
                 .iter()
                 .map(|x| self.forward(x))
                 .map(|y| y.get(0).unwrap().clone())
@@ -139,23 +133,17 @@ impl MultiLayerPerceptron {
                     // acc + (y-ypref)^2.0
                     Value::add(acc, Value::pow(Value::sub(y.clone(), ypred), 2.0))
                 });
-            loss = Value::div(loss.clone(), Value::new(ys.len() as f32));
-
+            let loss = Value::div(loss.clone(), Value::new(ys.len() as f32));
 
             Value::back_propagate(&loss);
             println!("Loss at iteration {}: {}", iter, loss);
-            println!("{}", self);
 
             let params = self.parameters();
 
             for p in params {
                 Value::backward(&p, learning_rate);
             }
-
         }
-
-        println!("-------------------------------------------------------------------------------------");
-        Value::print_children(&loss);
     }
 }
 
@@ -170,7 +158,7 @@ impl NetworkParameters for MultiLayerPerceptron {
 impl fmt::Display for MultiLayerPerceptron {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "MultiLayerPerceptron")?;
-        for (i, layer) in self.layers.iter().enumerate() {
+        for layer in self.layers.iter() {
             writeln!(f, "    {}", layer)?;
         }
         Ok(())
