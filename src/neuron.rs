@@ -139,7 +139,6 @@ impl MultiLayerPerceptron {
             println!("Loss at iteration {}: {}", iter, loss);
 
             let params = self.parameters();
-
             for p in params {
                 Value::backward(&p, learning_rate);
             }

@@ -41,15 +41,22 @@ impl Value {
     }
 
     pub fn back_propagate(val: &RefValue) -> () {
-        {
-            let mut start_borrow = val.get().borrow_mut();
-            start_borrow.grad = 1.0;
-        }
-
         let mut topo = vec![];
         let mut visited = HashSet::new();
 
         Self::topological_sort(&val, &mut topo, &mut visited);
+
+        // Resetting grad
+        for node in &topo {
+            let mut node_borrow = node.get().borrow_mut();
+            node_borrow.grad = 0.0;
+        }
+        
+        // Backpropagate
+        {
+            let mut start_borrow = val.get().borrow_mut();
+            start_borrow.grad = 1.0;
+        }
 
         while let Some(node) = topo.pop() {
             let (data, grad, children, non_chained_deps, op) = {
