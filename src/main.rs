@@ -25,6 +25,6 @@ fn main() {
     };
     forward_and_print(xs.clone());
 
-    mlp.train(0.05, 100, xs.clone(), ys);
+    mlp.train(0.05, 200, xs.clone(), ys);
     forward_and_print(xs.clone());
 }

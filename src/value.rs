@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+use std::ops;
 
 #[derive(Debug, Clone)]
 pub struct Value {
@@ -295,8 +296,6 @@ impl fmt::Display for Value {
     }
 }
 
-/*
-
 impl From<f32> for RefValue {
     fn from(value: f32) -> Self {
         // TODO: Check if other properties also need to be copied.
@@ -311,21 +310,12 @@ impl From<i32> for RefValue {
     }
 }
 
+
 impl<T: Into<RefValue>> ops::Add<T> for RefValue {
     type Output = Self;
 
     fn add(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
-        let val = RefValue(Rc::new(RefCell::new(Value {
-            data: self.get().borrow().data + rhs.get().borrow().data,
-            op: Some("+"),
-            children: vec![],
-            non_chained_deps: None,
-            grad: 0.0,
-        })));
-        val.get().borrow_mut().children.extend(vec![self, rhs]);
-
-        val
+        Value::add(self, rhs.into())
     }
 }
 
@@ -378,18 +368,7 @@ impl<T: Into<RefValue>> ops::Mul<T> for RefValue {
     type Output = Self;
 
     fn mul(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
-        let val = RefValue(Rc::new(RefCell::new(Value {
-            data: self.get().borrow().data * rhs.get().borrow().data,
-            op: Some("*"),
-            children: vec![],
-            non_chained_deps: None,
-            grad: 0.0,
-        })));
-
-        val.get().borrow_mut().children.extend(vec![self, rhs]);
-
-        val
+        Value::mul(self, rhs.into())
     }
 }
 
@@ -438,5 +417,3 @@ impl ops::Div<RefValue> for f32 {
         self_as_ref_value / rhs
     }
 }
-
-*/
