@@ -1,6 +1,7 @@
 use crate::value::{RefValue, Value};
 use rand::Rng;
 use std::fmt;
+use log::{debug};
 
 pub trait NetworkParameters {
     fn parameters(&self) -> Vec<RefValue>;
@@ -8,8 +9,8 @@ pub trait NetworkParameters {
 
 #[derive(Clone)]
 pub struct Neuron {
-    weights: Vec<RefValue>,
-    bias: RefValue,
+    pub weights: Vec<RefValue>,
+    pub bias: RefValue,
 }
 
 impl Neuron {
@@ -50,7 +51,7 @@ impl NetworkParameters for Neuron {
 
 #[derive(Clone)]
 pub struct Layer {
-    neurons: Vec<Neuron>,
+    pub neurons: Vec<Neuron>,
 }
 
 impl Layer {
@@ -85,7 +86,7 @@ impl NetworkParameters for Layer {
 
 #[derive(Clone)]
 pub struct MultiLayerPerceptron {
-    layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
 }
 
 impl MultiLayerPerceptron {
@@ -136,7 +137,7 @@ impl MultiLayerPerceptron {
             let loss = Value::div(loss.clone(), Value::new(ys.len() as f32));
 
             Value::back_propagate(&loss);
-            println!("Loss at iteration {}: {}", iter, loss);
+            debug!("Loss at iteration {}: {}", iter, loss);
 
             let params = self.parameters();
             for p in params {

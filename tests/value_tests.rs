@@ -97,7 +97,8 @@ mod value_tests {
         let a = Value::new(0.5);
         let x = Value::tanh(a);
 
-        assert!((x.get().borrow().data - 0.46211716).abs() < 1e-6);
+        let expected = 0.5_f32.tanh();
+        assert!((x.get().borrow().data - expected).abs() < 1e-6);
     }
 
     #[test]
@@ -105,7 +106,8 @@ mod value_tests {
         let a = Value::new(1.0);
         let x = Value::exp(a);
         
-        assert!((x.get().borrow().data - 2.71828).abs() < 1e-5);
+        let expected = 1.0_f32.exp();
+        assert!((x.get().borrow().data - expected).abs() < 1e-5);
     }
 
     #[test]
@@ -129,14 +131,13 @@ mod value_tests {
 
     #[test]
     fn test_mixed_operations() {
-        let a = Value::new(2.0);
-        let b = Value::new(3.0);
-        let c = Value::new(4.0);
+        let a = Value::new(0.5);
+        let b = Value::new(0.3);
+        let c = Value::new(0.2);
         let x = Value::tanh(a * b + c);
         
-        println!("{}", x.get().borrow().data);
-        assert!((x.get().borrow().data - 0.9999877).abs() < 5e-5);
-
+        let expected = (0.5_f32 * 0.3 + 0.2).tanh();
+        assert!((x.get().borrow().data - expected).abs() < 1e-6);
     }
 
     #[test]
