@@ -1,9 +1,16 @@
-use micrograd_rs::value::{Value};
+use micrograd_rs::value::Value;
 use micrograd_rs::neuron::{Neuron, MultiLayerPerceptron, NetworkParameters};
+use log::debug;
+use env_logger;
 
 #[cfg(test)]
 mod neuron_tests {
     use super::*;
+
+    #[ctor::ctor]
+    fn init() {
+        env_logger::init();
+    }
 
     #[test]
     fn test_neuron_creation() {
@@ -69,6 +76,7 @@ mod neuron_tests {
         
         // Check if the network has learned something
         let outputs: Vec<f32> = xs.iter().map(|x| mlp.forward(x)[0].get().borrow().data).collect();
+        debug!("Outputs after training: {:?}", outputs);
         
         // Check if outputs are close to expected values within a certain error range
         let error_margin = 0.45; // Adjust this value based on desired accuracy
