@@ -132,7 +132,7 @@ impl MultiLayerPerceptron {
                 .zip(ys.iter())
                 .fold(Value::new(0.0), |acc, (ypred, y)| {
                     // acc + (y-ypref)^2.0
-                    Value::add(acc, Value::pow(Value::sub(y.clone(), ypred), 2.0))
+                    acc + Value::pow(y.clone() - ypred, 2.0)
                 });
             let loss = Value::div(loss.clone(), Value::new(ys.len() as f32));
 

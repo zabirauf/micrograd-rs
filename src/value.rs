@@ -44,58 +44,55 @@ impl Value {
     pub fn back_propagate(val: &RefValue) -> () {
         let mut topo = vec![];
         let mut visited = HashSet::new();
-
+    
         Self::topological_sort(&val, &mut topo, &mut visited);
-
+    
         // Resetting grad
         for node in &topo {
-            let mut node_borrow = node.get().borrow_mut();
-            node_borrow.grad = 0.0;
+            node.get().borrow_mut().grad = 0.0;
         }
         
+        // Set the gradient of the output to 1.0
+        val.get().borrow_mut().grad = 1.0;
+    
         // Backpropagate
-        {
-            let mut start_borrow = val.get().borrow_mut();
-            start_borrow.grad = 1.0;
-        }
-
-        while let Some(node) = topo.pop() {
-            let (data, grad, children, non_chained_deps, op) = {
+        for node in topo.iter().rev() {
+            let (grad, op) = {
                 let n = node.get().borrow();
-                (n.data, n.grad, n.children.clone(), n.non_chained_deps, n.op)
+                (n.grad, n.op)
             };
-
-            for child in children.iter() {
-                let mut child_borrow = child.get().borrow_mut();
+    
+            let mut children_data = Vec::new();
+            for child in &node.get().borrow().children {
+                children_data.push(child.get().borrow().data);
+            }
+    
+            for (i, child) in node.get().borrow().children.iter().enumerate() {
+                let child_grad;
                 match op {
                     Some("+") => {
-                        // For addition, gradient is passed directly
-                        child_borrow.grad += 1.0 * grad;
+                        child_grad = 1.0 * grad;
                     }
                     Some("*") => {
-                        let other_child_data = if child == &children[0] {
-                            children[1].get().borrow().data
-                        } else {
-                            children[0].get().borrow().data
-                        };
-
-                        // For multiplication, gradient is scaled by the other operand
-                        child_borrow.grad += grad * other_child_data;
+                        let other_child_data = if i == 0 { children_data[1] } else { children_data[0] };
+                        child_grad = grad * other_child_data;
                     }
                     Some("tanh") => {
-                        // 1 - tanh(x)^2 is the derivative so * grad
-                        child_borrow.grad += (1.0 - data.powi(2)) * grad;
+                        child_grad = (1.0 - node.get().borrow().data.powi(2)) * grad;
                     }
                     Some("exp") => {
-                        // Derivative of e^x is e^x so gradient would be e^x * gradient
-                        child_borrow.grad += data * grad;
+                        child_grad = node.get().borrow().data * grad;
                     }
                     Some("pow") => {
-                        let n = non_chained_deps.unwrap()[0];
-                        child_borrow.grad += n * child_borrow.data.powf(n - 1.0) * grad;
+                        let n = node.get().borrow().non_chained_deps.unwrap()[0];
+                        child_grad = n * child.get().borrow().data.powf(n - 1.0) * grad;
                     }
-                    _ => {} // No operation or unsupported operation; no gradient update
+                    Some("relu") => {
+                        child_grad = if child.get().borrow().data >= 0.0 { grad } else { 0.0 };
+                    }
+                    _ => { unreachable!() }
                 }
+                child.get().borrow_mut().grad += child_grad;
             }
         }
     }
@@ -115,6 +112,18 @@ impl Value {
         }
 
         topo.push(node.clone());
+    }
+
+    pub fn relu(slf: RefValue) -> RefValue {
+        let x = slf.get().borrow().data;
+        let result = x.max(0.0);
+        RefValue(Rc::new(RefCell::new(Value {
+            data: result,
+            op: Some("relu"),
+            children: vec![slf],
+            non_chained_deps: None,
+            grad: 0.0,
+        })))
     }
 
     pub fn tanh(slf: RefValue) -> RefValue {

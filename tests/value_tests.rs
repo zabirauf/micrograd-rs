@@ -147,4 +147,43 @@ mod value_tests {
         
         assert_eq!(x.get().borrow().data, 9.0);
     }
+
+    #[test]
+    fn test_relu() {
+        // Test positive input
+        let a = Value::new(2.0);
+        let x = Value::relu(a);
+        assert_eq!(x.get().borrow().data, 2.0);
+
+        // Test zero input
+        let b = Value::new(0.0);
+        let y = Value::relu(b);
+        assert_eq!(y.get().borrow().data, 0.0);
+
+        // Test negative input
+        let c = Value::new(-1.5);
+        let z = Value::relu(c);
+        assert_eq!(z.get().borrow().data, 0.0);
+    }
+
+    #[test]
+    fn test_relu_backward() {
+        // Test positive input
+        let a = Value::new(2.0);
+        let x = Value::relu(a.clone());
+        Value::back_propagate(&x);
+        assert_eq!(a.get().borrow().grad, 1.0);
+
+        // Test zero input
+        let b = Value::new(0.0);
+        let y = Value::relu(b.clone());
+        Value::back_propagate(&y);
+        assert_eq!(b.get().borrow().grad, 1.0);  // Note: ReLU's derivative at 0 is typically defined as 1
+
+        // Test negative input
+        let c = Value::new(-1.5);
+        let z = Value::relu(c.clone());
+        Value::back_propagate(&z);
+        assert_eq!(c.get().borrow().grad, 0.0);
+    }
 }
